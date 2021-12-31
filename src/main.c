@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <libgen.h>
 #include "common.h"
+#include "log.h"
 #include "hyperion_client.h"
 #include <glib.h>
 #include <glib-object.h>
@@ -373,6 +374,7 @@ static int parse_options(int argc, char *argv[])
             break;
         case 'S':
             config.no_service = 1;
+            break;
         case 'v':
             config.verbose = 1;
             break;
@@ -389,6 +391,7 @@ static int parse_options(int argc, char *argv[])
             break;
         case 'h':
         default:
+            WARN("Unknown option");
             print_usage();
             return 1;
         }
@@ -452,8 +455,8 @@ static int parse_options(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-    PmLogGetContext("hyperion-webos_service", &logcontext);
-    PmLogInfo(logcontext, "FNCMAIN", 0, "Service main starting..");
+    log_init();
+    INFO("Starting up...");
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
     signal(SIGCONT, handle_signal);
@@ -478,6 +481,9 @@ int main(int argc, char *argv[])
             PmLogError(logcontext, "FNCSTART", 0,  "ERROR: Capture main init failed!");
             return 1;
         }
+
+        pthread_join(connection_thread, NULL);
+        INFO("Finished");
         return ret;
 
     }else{
@@ -620,16 +626,17 @@ int capture_main(){
 }
 
 void *connection_loop(void *data){
-    PmLogInfo(logcontext, "FNCCPTLOOP", 0, "Starting connection loop");
+    INFO("Starting connection loop");
     while (!app_quit)
     {
-        PmLogInfo(logcontext, "FNCCPTMAIN", 0, "Connecting hyperion-client..");
+        INFO("Connecting hyperion-client..");
         if ((hyperion_client("webos", _address, _port, 150)) != 0) {
-            PmLogError(logcontext, "FNCCPTMAIN", 0, "Error! hyperion_client.");
+            ERR("Error! hyperion_client.");
         } else {
+            INFO("hyperion-client connected!");
             while (!app_quit) {
                 if (hyperion_read() < 0) {
-                    PmLogError(logcontext, "FNCCPTLOOP", 0, "Error! Connection timeout.");
+                    ERR("Error! Connection timeout.");
                     break;
                 }
             }
@@ -638,14 +645,14 @@ void *connection_loop(void *data){
         hyperion_destroy();
 
         if (!app_quit) {
-            PmLogInfo(logcontext, "FNCCPTMAIN", 0, "Connection destroyed, waiting...");
+            INFO("Connection destroyed, waiting...");
             sleep(1);
         }
     }
 
-    PmLogInfo(logcontext, "FNCCPTLOOP", 0, "Ending connection loop");
+    INFO("Ending connection loop");
     if(exitme){
-        PmLogInfo(logcontext, "FNCCPTLOOP", 0, "exitme true -> Exit");
+        INFO("exitme true -> Exit");
         exit(0);
     }
     cleanup();

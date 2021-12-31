@@ -14,6 +14,8 @@
 #include <gm.h>
 
 #include "common.h"
+#include "log.h"
+
 #include <PmLogLib.h>
 #include <glib.h>
 #include <glib-object.h>
@@ -54,8 +56,7 @@ uint64_t getticks_us()
 
 int capture_preinit(cap_backend_config_t *backend_config, cap_imagedata_callback_t callback)
 {
-    PmLogGetContext("hyperion-webos_service", &logcontext);
-    PmLogInfo(logcontext, "DILEPREINIT", 0, "Preinit called. Copying config..");
+    INFO("Preinit called. Copying config..");
     memcpy(&config, backend_config, sizeof(cap_backend_config_t));
     imagedata_cb = callback;
 
@@ -63,16 +64,17 @@ int capture_preinit(cap_backend_config_t *backend_config, cap_imagedata_callback
 }
 
 int capture_init() {
-    PmLogInfo(logcontext, "DILEINIT", 0, "Init called.");
+    INFO("Init called");
     if (getenv("NO_VSYNC_THREAD") != NULL) {
         use_vsync_thread = false;
-        PmLogError(logcontext, "DILECPTINIT", 0, "[DILE_VT] Disabling vsync thread");
+        WARN("Disabling vsync thread");
     }
     return 0;
 }
 
 int capture_terminate() {
-    PmLogInfo(logcontext, "DILETERM", 0, "Capture termination called.");
+    INFO("Capture termination called");
+
     capture_running = false;
 
     if (capture_thread != NULL) {
@@ -101,7 +103,7 @@ int capture_cleanup() {
 
 int capture_start()
 {
-    PmLogInfo(logcontext, "DILECPTSTART", 0, "Capture start called.");
+    INFO("Capture start called.");
     vth = DILE_VT_Create(0);
     if (vth == NULL) {
         return -1;
@@ -112,10 +114,10 @@ int capture_start()
         return -11;
     }
 
-    PmLogInfo(logcontext, "DILECPTSTART", 0, "[DILE_VT] supportScaleUp: %d; (%dx%d)", limitation.supportScaleUp, limitation.scaleUpLimitWidth, limitation.scaleUpLimitHeight);
-    PmLogInfo(logcontext, "DILECPTSTART", 0, "[DILE_VT] supportScaleDown: %d; (%dx%d)", limitation.supportScaleDown, limitation.scaleDownLimitWidth, limitation.scaleDownLimitHeight);
-    PmLogInfo(logcontext, "DILECPTSTART", 0, "[DILE_VT] maxResolution: %dx%d", limitation.maxResolution.width, limitation.maxResolution.height);
-    PmLogInfo(logcontext, "DILECPTSTART", 0, "[DILE_VT] input deinterlace: %d; display deinterlace: %d", limitation.supportInputVideoDeInterlacing, limitation.supportDisplayVideoDeInterlacing);
+    DBG("supportScaleUp: %d; (%dx%d)", limitation.supportScaleUp, limitation.scaleUpLimitWidth, limitation.scaleUpLimitHeight);
+    DBG("supportScaleDown: %d; (%dx%d)", limitation.supportScaleDown, limitation.scaleDownLimitWidth, limitation.scaleDownLimitHeight);
+    DBG("maxResolution: %dx%d", limitation.maxResolution.width, limitation.maxResolution.height);
+    DBG("input deinterlace: %d; display deinterlace: %d", limitation.supportInputVideoDeInterlacing, limitation.supportDisplayVideoDeInterlacing);
 
     if (DILE_VT_SetVideoFrameOutputDeviceDumpLocation(vth, DILE_VT_DISPLAY_OUTPUT) != 0) {
         return -2;
@@ -124,7 +126,7 @@ int capture_start()
     DILE_VT_RECT region = {0, 0, config.resolution_width, config.resolution_height};
 
     if (region.width < limitation.scaleDownLimitWidth || region.height < limitation.scaleDownLimitHeight) {
-        PmLogError(logcontext, "DILECPTSTART", 0, "[DILE_VT] WARNING: scaledown is limited to %dx%d while %dx%d has been chosen - there's a chance this will crash!", limitation.scaleDownLimitWidth, limitation.scaleDownLimitHeight, region.width, region.height);
+        WARN("scaledown is limited to %dx%d while %dx%d has been chosen - there's a chance this will crash!", limitation.scaleDownLimitWidth, limitation.scaleDownLimitHeight, region.width, region.height);
     }
 
     if (DILE_VT_SetVideoFrameOutputDeviceOutputRegion(vth, DILE_VT_DISPLAY_OUTPUT, &region) != 0) {
@@ -261,7 +263,7 @@ void capture_frame() {
 
     uint64_t now = getticks_us();
     if (framecount % 30 == 0) {
-        PmLogError(logcontext, "DILECPTFRM", 0, "[DILE_VT] framerate: %.6f FPS", (30.0 * 1000000) / (now - start_time));
+        DBG("framerate: %.6f FPS", (30.0 * 1000000) / (now - start_time));
         start_time = now;
     }
 
