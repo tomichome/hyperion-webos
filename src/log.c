@@ -5,6 +5,7 @@
 
 uint64_t start = 0;
 PmLogContext context;
+LogLevel current_log_level = Info;
 
 uint64_t getticks_us()
 {
@@ -15,6 +16,10 @@ uint64_t getticks_us()
 
 void log_init() {
     PmLogGetContext("hyperion-webos", &context);
+}
+
+void log_set_level(LogLevel level) {
+    current_log_level = level;
 }
 
 void log_printf(LogLevel level, const char* module, const char* fmt, ...) {
@@ -42,8 +47,11 @@ void log_printf(LogLevel level, const char* module, const char* fmt, ...) {
 
     PmLogVPrint(context, level, fmt, args);
 
-    fprintf(stderr, "%10.3fs %s[%4s %-20s]\x1b[0m ", (getticks_us() - start)/1000000.0, color_str, level_str, module);
-    vfprintf(stderr, fmt, args);
-    fprintf(stderr, "\n");
+    if (level <= current_log_level) {
+        fprintf(stderr, "%10.3fs %s[%4s %-20s]\x1b[0m ", (getticks_us() - start)/1000000.0, color_str, level_str, module);
+        vfprintf(stderr, fmt, args);
+        fprintf(stderr, "\n");
+    }
+
     va_end (args);
 }

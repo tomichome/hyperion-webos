@@ -10,6 +10,7 @@ typedef enum {
 } LogLevel;
 
 void log_init();
+void log_set_level(LogLevel level);
 void log_printf(LogLevel level, const char* module, const char* fmt, ...);
 
 #define LOG(level, ...) log_printf(level, __FUNCTION__, __VA_ARGS__)
