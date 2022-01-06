@@ -216,7 +216,8 @@ int capture_start()
             return -8;
         }
     }
-    INFO("Capture finished.");
+
+    return 0;
 }
 
 uint64_t framecount = 0;
@@ -233,7 +234,7 @@ void dump_buffer(uint8_t* buf, uint64_t size, uint32_t idx, uint32_t plane) {
 }
 
 void capture_frame() {
-    uint16_t t1,t7;
+    uint64_t t1,t7;
     uint32_t width = vfbprop.width;
     uint32_t height = vfbprop.height;
 
@@ -263,11 +264,12 @@ void capture_frame() {
 
     framecount += 1;
 
+    t1 = getticks_us();
+
     if (vfbprop.pixelFormat == DILE_VT_VIDEO_FRAME_BUFFER_PIXEL_FORMAT_RGB) {
         // Width is incorrectly reported on RGB pixel format (equal to stride)
         width = vfbprop.stride / 3;
 
-        t1 = getticks_us();
         if (config.no_gui) {
             outbuf = vfbs[idx][0];
         } else {
@@ -330,7 +332,7 @@ void capture_frame() {
     t7 = getticks_us();
 
     if (framecount % 15 == 0) {
-        DBG("[DILE_VT] frame feed time: %.3fms", (t7 - t1) / 1000);
+        DBG("[DILE_VT] frame feed time: %.3fms", (t7 - t1) / 1000.0);
     }
 
     output_state.freezed = 0;
