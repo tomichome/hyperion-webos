@@ -144,7 +144,7 @@ int capture_start()
     uint64_t t2 = getticks_us();
 
     double fps = 1000000.0 / (t2 - t1);
-    INFO("[DILE_VT] frametime: %d; estimated fps before divider: %.5f", t2 - t1, fps);
+    INFO("[DILE_VT] frametime: %d; estimated fps before divider: %.5f", (uint32_t) (t2 - t1), fps);
 
     // Set framerate divider
     if (DILE_VT_SetVideoFrameOutputDeviceState(vth, DILE_VT_VIDEO_FRAME_OUTPUT_DEVICE_STATE_FRAMERATE_DIVIDE, &output_state) != 0) {
@@ -157,7 +157,7 @@ int capture_start()
     t2 = getticks_us();
 
     fps = 1000000.0 / (t2 - t1);
-    INFO("[DILE_VT] frametime: %d; estimated fps after divider: %.5f", t2 - t1, fps);
+    INFO("[DILE_VT] frametime: %d; estimated fps after divider: %.5f", (uint32_t) (t2 - t1), fps);
 
     // Set freeze
     if (DILE_VT_SetVideoFrameOutputDeviceState(vth, DILE_VT_VIDEO_FRAME_OUTPUT_DEVICE_STATE_FREEZED, &output_state) != 0) {
@@ -234,7 +234,7 @@ void dump_buffer(uint8_t* buf, uint64_t size, uint32_t idx, uint32_t plane) {
 }
 
 void capture_frame() {
-    uint64_t t1,t7;
+    uint64_t t1, t6, t7;
     uint32_t width = vfbprop.width;
     uint32_t height = vfbprop.height;
 
@@ -271,6 +271,9 @@ void capture_frame() {
         width = vfbprop.stride / 3;
 
         if (config.no_gui) {
+            if (framecount == 10) {
+                DBG("Using fast path!");
+            }
             outbuf = vfbs[idx][0];
         } else {
             if (outbuf == NULL)
@@ -299,10 +302,8 @@ void capture_frame() {
             outbuf = malloc(3 * width * height);
 
         if (config.no_gui) {
-            t1 = getticks_us();
             NV21ToRGB24(vfbs[idx][0], vfbprop.stride, vfbs[idx][1], vfbprop.stride, outbuf, width * 3, width, height);
         } else if (config.no_video) {
-            t1 = getticks_us();
             GM_CaptureGraphicScreen(gm_surface.surfaceID, &width, &height);
             ABGRToRGB24(gm_surface.framebuffer, 4 * width, outbuf, 3 * width, width, height);
         } else {
@@ -313,7 +314,6 @@ void capture_frame() {
             if (argbui == NULL)
                 argbui = malloc(4 * width * height);
 
-            t1 = getticks_us();
             GM_CaptureGraphicScreen(gm_surface.surfaceID, &width, &height);
             ABGRToARGB(gm_surface.framebuffer, 4 * width, argbui, 4 * width, width, height);
             NV21ToARGB(vfbs[idx][0], vfbprop.stride, vfbs[idx][1], vfbprop.stride, argbvideo, 4 * width, width, height);
@@ -328,11 +328,12 @@ void capture_frame() {
         return;
     }
 
+    t6 = getticks_us();
     imagedata_cb(width, height, outbuf);
     t7 = getticks_us();
 
     if (framecount % 15 == 0) {
-        DBG("[DILE_VT] frame feed time: %.3fms", (t7 - t1) / 1000.0);
+        DBG("[DILE_VT] frame processing time: %.3fms; frame send time: %.3fms", (t6 - t1) / 1000.0, (t7 - t6) / 1000.0);
     }
 
     output_state.freezed = 0;
