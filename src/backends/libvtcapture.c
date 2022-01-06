@@ -15,9 +15,7 @@
 #include <halgal.h>
 
 #include "common.h"
-#include <PmLogLib.h>
-#include <glib.h>
-#include <glib-object.h>
+#include "log.h"
 
 pthread_mutex_t frame_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_t capture_thread;
@@ -79,7 +77,6 @@ size_t len;
 char *addr;
 int fd;
 
-PmLogContext logcontext;
 
 VT_RESOLUTION_T resolution = {360, 180};
 
@@ -102,7 +99,6 @@ void NV21_TO_RGB24(unsigned char *yuyv, unsigned char *rgb, int width, int heigh
 void *capture_thread_target(void *data);
 
 int capture_preinit(cap_backend_config_t *backend_config, cap_imagedata_callback_t callback){
-    PmLogGetContext("hyperion-webos_service", &logcontext);
     INFO("Preinit called. Copying config..");
     memcpy(&config, backend_config, sizeof(cap_backend_config_t));
     imagedata_cb = callback;

@@ -16,9 +16,7 @@
 
 #include "gl_debug.h"
 #include "common.h"
-#include <PmLogLib.h>
-#include <glib.h>
-#include <glib-object.h>
+#include "log.h"
 
 EGLDisplay egl_display;
 EGLContext egl_context;
@@ -35,8 +33,6 @@ GLubyte *pixels_rgba = NULL, *pixels_rgb = NULL;
 
 bool capture_initialized = false;
 bool vt_available = false;
-
-PmLogContext logcontext;
 
 cap_backend_config_t config = {0, 0, 0, 0};
 cap_imagedata_callback_t imagedata_cb = NULL;
@@ -127,7 +123,6 @@ void egl_cleanup()
 
 int capture_preinit(cap_backend_config_t *backend_config, cap_imagedata_callback_t callback)
 {
-    PmLogGetContext("hyperion-webos_service", &logcontext);
     INFO("Preinit called. Copying config..");
     memcpy(&config, backend_config, sizeof(cap_backend_config_t));
     imagedata_cb = callback;

@@ -16,10 +16,6 @@
 #include "common.h"
 #include "log.h"
 
-#include <PmLogLib.h>
-#include <glib.h>
-#include <glib-object.h>
-
 cap_backend_config_t config = {0, 0, 0, 0};
 cap_imagedata_callback_t imagedata_cb = NULL;
 
@@ -31,8 +27,6 @@ pthread_cond_t vsync_cond;
 
 bool use_vsync_thread = true;
 bool capture_running = true;
-
-PmLogContext logcontext;
 
 DILE_VT_HANDLE vth = NULL;
 DILE_OUTPUTDEVICE_STATE output_state;
@@ -142,7 +136,7 @@ int capture_start()
     // average it out - if someone sets their preferred framerate to 30 and
     // content was 50fps, we'll just end up feeding 25 frames per second.
     output_state.framerate = config.fps == 0 ? 1 : 60 / config.fps;
-    PmLogInfo(logcontext, "DILECPTSTART", 0, "[DILE_VT] framerate divider: %d", output_state.framerate);
+    INFO("[DILE_VT] framerate divider: %d", output_state.framerate);
 
     DILE_VT_WaitVsync(vth, 0, 0);
     uint64_t t1 = getticks_us();
@@ -150,7 +144,7 @@ int capture_start()
     uint64_t t2 = getticks_us();
 
     double fps = 1000000.0 / (t2 - t1);
-    PmLogInfo(logcontext, "DILECPTSTART", 0, "[DILE_VT] frametime: %d; estimated fps before divider: %.5f", t2 - t1, fps);
+    INFO("[DILE_VT] frametime: %d; estimated fps before divider: %.5f", t2 - t1, fps);
 
     // Set framerate divider
     if (DILE_VT_SetVideoFrameOutputDeviceState(vth, DILE_VT_VIDEO_FRAME_OUTPUT_DEVICE_STATE_FRAMERATE_DIVIDE, &output_state) != 0) {
@@ -163,7 +157,7 @@ int capture_start()
     t2 = getticks_us();
 
     fps = 1000000.0 / (t2 - t1);
-    PmLogInfo(logcontext, "DILECPTSTART", 0, "[DILE_VT] frametime: %d; estimated fps after divider: %.5f", t2 - t1, fps);
+    INFO("[DILE_VT] frametime: %d; estimated fps after divider: %.5f", t2 - t1, fps);
 
     // Set freeze
     if (DILE_VT_SetVideoFrameOutputDeviceState(vth, DILE_VT_VIDEO_FRAME_OUTPUT_DEVICE_STATE_FREEZED, &output_state) != 0) {
@@ -175,7 +169,7 @@ int capture_start()
         return -9;
     }
 
-    PmLogInfo(logcontext, "DILECPTSTART", 0, "[DILE_VT] vfbs: %d; planes: %d", vfbcap.numVfbs, vfbcap.numPlanes);
+    INFO("[DILE_VT] vfbs: %d; planes: %d", vfbcap.numVfbs, vfbcap.numPlanes);
     uint32_t** ptr = calloc(sizeof(uint32_t*), vfbcap.numVfbs);
     for (int vfb = 0; vfb < vfbcap.numVfbs; vfb++) {
         ptr[vfb] = calloc(sizeof(uint32_t), vfbcap.numPlanes);
@@ -193,12 +187,12 @@ int capture_start()
         return -6;
     }
 
-    PmLogInfo(logcontext, "DILECPTSTART", 0, "DILECPTSTART", 0, "[DILE_VT] pixelFormat: %d; width: %d; height: %d; stride: %d...", vfbprop.pixelFormat, vfbprop.width, vfbprop.height, vfbprop.stride);
+    INFO("[DILE_VT] pixelFormat: %d; width: %d; height: %d; stride: %d...", vfbprop.pixelFormat, vfbprop.width, vfbprop.height, vfbprop.stride);
     vfbs = calloc(vfbcap.numVfbs, sizeof(uint8_t**));
     for (int vfb = 0; vfb < vfbcap.numVfbs; vfb++) {
         vfbs[vfb] = calloc(vfbcap.numPlanes, sizeof(uint8_t*));
         for (int plane = 0; plane < vfbcap.numPlanes; plane++) {
-            PmLogError(logcontext, "DILECPTSTART", 0, "[DILE_VT] vfb[%d][%d] = 0x%08x", vfb, plane, vfbprop.ptr[vfb][plane]);
+            DBG("[DILE_VT] vfb[%d][%d] = 0x%08x", vfb, plane, vfbprop.ptr[vfb][plane]);
             vfbs[vfb][plane] = (uint8_t*) mmap(0, vfbprop.stride * vfbprop.height, PROT_READ, MAP_SHARED, mem_fd, vfbprop.ptr[vfb][plane]);
         }
     }
@@ -222,7 +216,7 @@ int capture_start()
             return -8;
         }
     }
-    PmLogInfo(logcontext, "DILECPTSTART", 0, "Capture finished.");
+    INFO("Capture finished.");
 }
 
 uint64_t framecount = 0;
@@ -235,7 +229,7 @@ void dump_buffer(uint8_t* buf, uint64_t size, uint32_t idx, uint32_t plane) {
     FILE* fd = fopen(filename, "wb");
     fwrite(buf, size, 1, fd);
     fclose(fd);
-    PmLogInfo(logcontext, "DILEDUMP", 0, "Buffer dumped to: %s", filename);
+    INFO("Buffer dumped to: %s", filename);
 }
 
 void capture_frame() {
@@ -325,7 +319,7 @@ void capture_frame() {
             ARGBToRGB24(argbblended, 4 * width, outbuf, 3 * width, width, height);
         }
     } else {
-        PmLogError(logcontext, "DILECPTFRM", 0, "[DILE_VT] Unsupported pixel format: %d", vfbprop.pixelFormat);
+        ERR("[DILE_VT] Unsupported pixel format: %d", vfbprop.pixelFormat);
         for (int plane = 0; plane < vfbcap.numPlanes; plane++) {
             dump_buffer(vfbs[idx][plane], vfbprop.stride * vfbprop.height, idx, plane);
         }
@@ -335,8 +329,8 @@ void capture_frame() {
     imagedata_cb(width, height, outbuf);
     t7 = getticks_us();
 
-    if ((framecount % 15 == 0) && config.verbose) {
-        PmLogInfo(logcontext, "DILECPTFRM", 0, "[DILE_VT] frame feed time: %.3fms", (t7 - t1) / 1000);
+    if (framecount % 15 == 0) {
+        DBG("[DILE_VT] frame feed time: %.3fms", (t7 - t1) / 1000);
     }
 
     output_state.freezed = 0;
@@ -344,14 +338,14 @@ void capture_frame() {
 }
 
 void* capture_thread_target(void* data) {
-    PmLogInfo(logcontext, "DILECPTTHREAD", 0, "capture_thread_target called.");
+    INFO("capture_thread_target called.");
     while (capture_running) {
         capture_frame();
     }
 }
 
 void* vsync_thread_target(void* data) {
-    PmLogInfo(logcontext, "DILEVSYNCTHREAD", 0, "vsync_thread_target called.");
+    INFO("vsync_thread_target called.");
     while (capture_running) {
         DILE_VT_WaitVsync(vth, 0, 0);
         pthread_mutex_lock(&vsync_lock);
