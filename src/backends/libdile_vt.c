@@ -278,7 +278,8 @@ void* capture_thread_target(void* data) {
 void* vsync_thread_target(void* data) {
     PmLogInfo(logcontext, "DILEVSYNCTHREAD", 0, "vsync_thread_target called.");
     while (capture_running) {
-        DILE_VT_WaitVsync(vth, 0, 0);
+        //DILE_VT_WaitVsync(vth, 0, 0);
+        usleep(30000);
         pthread_mutex_lock(&vsync_lock);
         pthread_cond_signal(&vsync_cond);
         pthread_mutex_unlock(&vsync_lock);
