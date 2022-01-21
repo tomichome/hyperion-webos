@@ -32,10 +32,12 @@ pkg_check_modules(GLESv2 glesv2 REQUIRED)
 
 add_executable(hyperion-webos
     src/main.c
+    src/log.c
     src/hyperion_client.c
  )
 target_include_directories(hyperion-webos PRIVATE fbs)
 target_link_libraries(hyperion-webos flatccrt pthread dl ${GTHREAD2_LDFLAGS} ${PBNJSON_LDFLAGS} ${LS2_LDFLAGS} ${GLIB2_LDFLAGS} ${PMLOG_LDFLAGS})
+set_property(TARGET hyperion-webos PROPERTY ENABLE_EXPORTS 1)
 
 # Backends
 add_library(vt_backend SHARED
@@ -52,7 +54,7 @@ add_library(vtcapture_backend SHARED
 
 target_compile_definitions(vtcapture_backend PRIVATE CAPTURE_BACKEND)
 target_include_directories(vtcapture_backend PRIVATE src src/backends)
-target_link_libraries(vtcapture_backend vtcapture halgal)
+target_link_libraries(vtcapture_backend vtcapture halgal yuv)
 
 add_library(dile_vt_backend SHARED
     src/backends/libdile_vt.c
